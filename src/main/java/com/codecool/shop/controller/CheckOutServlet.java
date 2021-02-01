@@ -1,5 +1,7 @@
 package com.codecool.shop.controller;
 
+
+
 import com.codecool.shop.dao.ProductCategoryDao;
 import com.codecool.shop.dao.ProductDao;
 import com.codecool.shop.dao.implementation.ProductCategoryDaoMem;
@@ -11,20 +13,20 @@ import com.codecool.shop.model.ProductCategory;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.WebContext;
 
-import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import java.applet.Applet;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-@WebServlet(urlPatterns = {"/"})
-public class ProductController extends HttpServlet {
-    HashMap<Product , Integer> cartList = new HashMap<>();
+@WebServlet(name="checkout", urlPatterns = {"/checkout"})
+public class CheckOutServlet extends HttpServlet {
+    HashMap<Product, Integer> cartList = new HashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -32,28 +34,20 @@ public class ProductController extends HttpServlet {
         ProductCategoryDao productCategoryDataStore = ProductCategoryDaoMem.getInstance();
         SupplierDaoMem allSuppliers = SupplierDaoMem.getInstance();
 
+        HttpSession session = req.getSession();
 
-
+        String removeItem = req.getParameter("removeItem");
+        String addItem = req.getParameter("addItem");
         String category = req.getParameter("category");
         String supplier = req.getParameter("supplier");
         String add = req.getParameter("add");
-        String removeItem = req.getParameter("removeItem");
-        String addItem = req.getParameter("addItem");
 
 
 
+        TemplateEngine engine = TemplateEngineUtil.getTemplateEngine(req.getServletContext());
+        WebContext context = new WebContext(req, resp, req.getServletContext());
 
-        if(add!=null){
-            int addInt = Integer.parseInt(add);
-            Product itemName = productDataStore.find(addInt);
-            if(cartList.containsKey(itemName)){
-                cartList.put(itemName,cartList.get(itemName) + 1);
-            }
-            else {
-                cartList.put(itemName,1);
-            }
-
-        }
+        cartList = CartController.getListOfCart();
 
         if(addItem != null){
             int addItemInt = Integer.parseInt(addItem);
@@ -72,43 +66,18 @@ public class ProductController extends HttpServlet {
 
         }
 
+        CartController cart = new CartController();
+        float totalPrice = cart.getTotalPrice();
+        CartController.setListOfCart(cartList);
 
-
-        float totalPrice = 0;
-        for(Map.Entry<Product,Integer> entry:cartList.entrySet()){
-            totalPrice += entry.getValue()*entry.getKey().getDefaultPrice();
-
-        }
-
-        CartController cart  =  new CartController();
-        cart.setListOfCart(cartList);
-
-
-
-
-
-        TemplateEngine engine = TemplateEngineUtil.getTemplateEngine(req.getServletContext());
-        WebContext context = new WebContext(req, resp, req.getServletContext());
-
-        if (category == null && supplier == null) {
-            context.setVariable("products", productDataStore.getAll());
-
-        } else if(category !=null){
-            int categoryId=Integer.parseInt(category);
-            context.setVariable("products", productDataStore.getBy(productCategoryDataStore.find(categoryId)));
-        } else{
-            int supplierId = Integer.parseInt(supplier);
-            context.setVariable("products", productDataStore.getBy(allSuppliers.find(supplierId)));
-        }
-
-        context.setVariable("totalPrice", totalPrice);
-        context.setVariable("cartList", cartList);
+        context.setVariable("total", totalPrice);
         context.setVariable("cart", cart.getListOfCart());
+        context.setVariable("cartList", cartList);
         context.setVariable("supplier", allSuppliers.getAll());
         context.setVariable("category", productCategoryDataStore.getAll());
-        engine.process("product/index.html", context, resp.getWriter());
+
+
+        engine.process("product/checkout.html", context, resp.getWriter());
     }
 
 }
-
-
